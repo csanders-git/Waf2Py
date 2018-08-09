@@ -26,7 +26,7 @@ fi
 
 # install dependencies
 echo -e "[ + ] Installing dependencies"
-$CMD_APTGET udpate
+$CMD_APTGET update
 if [[ $DEBIAN_VERSION -eq "9" ]]; then
   $CMD_APTGET -y install net-tools
 fi
@@ -170,7 +170,11 @@ echo "[ + ] Creating ssl certificates"
 cd /etc/apache2/ssl
 $CMD_OPENSSL genrsa 4096 > /etc/apache2/ssl/self_signed.key
 $CMD_CHMOD 400 /etc/apache2/ssl/self_signed.key
-$CMD_OPENSSL req -new -x509 -nodes -sha1 -days 365 -key /etc/apache2/ssl/self_signed.key > /etc/apache2/ssl/self_signed.cert
+if [ -n "$SSLCountry" ]; then
+	$CMD_OPENSSL req -new -x509 -nodes -sha1 -days 365 -subj "/C=$SSLCountry/ST=$SSLState/L=$SSLLocation/O=$SSLOrg/CN=$SSLCN" -key /etc/apache2/ssl/self_signed.key > /etc/apache2/ssl/self_signed.cert
+else
+	$CMD_OPENSSL req -new -x509 -nodes -sha1 -days 365 -key /etc/apache2/ssl/self_signed.key > /etc/apache2/ssl/self_signed.cert
+fi	
 $CMD_OPENSSL x509 -noout -fingerprint -text < /etc/apache2/ssl/self_signed.cert > /etc/apache2/ssl/self_signed.info
 clear
 
@@ -178,7 +182,12 @@ $CMD_CHOWN -R www-data:www-data /home/www-data/waf2py_community
 echo "[ + ] Change the admin password for the admin interface of web2py"
 cd /home/www-data/waf2py_community
 $CMD_SUDO -u www-data python -c "from gluon.widget import console; console();"
-$CMD_SUDO -u www-data python -c "from gluon.main import save_password; save_password(raw_input('Choose an admin password for web2py admin: '),62443)"
+
+if [ -n "$adminPass" ]; then
+    $CMD_SUDO -u www-data python -c "from gluon.main import save_password; save_password($adminPass,62443)"
+else
+    $CMD_SUDO -u www-data python -c "from gluon.main import save_password; save_password(raw_input('Choose an admin password for web2py admin: '),62443)"
+fi
 cd ../
 
 # remove default web2py applications
